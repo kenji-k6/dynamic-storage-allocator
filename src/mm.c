@@ -48,7 +48,7 @@
 /* Macros for Explicit/Segregated free-list */
 
 #define NEXT_FREE(bp) (*(char **)(bp))//returns pointer to next free block in free list
-#define PREV_FREE(bp) (*(char **)(bp + WSIZE)) //returns pointer to prev free block in free list
+#define PREV_FREE(bp) (*(char **)((char *)bp + WSIZE)) //returns pointer to prev free block in free list
 #define NUMSEGS 12
 
 
@@ -56,7 +56,7 @@
 #define MAX(x, y) ((x) > (y)? (x) : (y)) //max macro
 #define MIN(x, y) ((x) > (y)? (y) : (x)) //max macro
 
-#define SEGS(i) (*(char **)(segs+((WSIZE)*(i))))
+#define SEGS(i) (*(char **)((char*)segs+((WSIZE)*(i))))
 
 static void *extend_heap(size_t words);
 static void *coalesce(void *bp);

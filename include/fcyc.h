@@ -1,3 +1,4 @@
+#pragma once
 /*
  * fcyc.h - prototypes for the routines in fcyc.c that estimate the
  *     time in CPU cycles used by a test function f

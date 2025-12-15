@@ -1,4 +1,5 @@
-/* 
+#pragma once
+/*
  * Function timers 
  */
 typedef void (*ftimer_test_funct)(void *); 

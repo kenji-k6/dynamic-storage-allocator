@@ -47,7 +47,7 @@ static double *samples = NULL;
 /* 
  * init_sampler - Start new sampling process 
  */
-static void init_sampler()
+static void init_sampler(void)
 {
     if (values)
 	free(values);
@@ -90,7 +90,7 @@ static void add_sample(double val)
 /* 
  * has_converged- Have kbest minimum measurements converged within epsilon? 
  */
-static int has_converged()
+static int has_converged(void)
 {
     return
 	(samplecount >= kbest) &&
@@ -102,7 +102,7 @@ static int has_converged()
  */
 static volatile int sink = 0;
 
-static void clear()
+static void clear(void)
 {
     int x = sink;
     int *cptr, *cend;

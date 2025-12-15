@@ -1,13 +1,14 @@
+#pragma once
 /* Routines for using cycle counter */
 
 /* Start the counter */
-void start_counter();
+void start_counter(void);
 
 /* Get # cycles since counter started */
-double get_counter();
+double get_counter(void);
 
 /* Measure overhead for counter */
-double ovhd();
+double ovhd(void);
 
 /* Determine clock rate of processor (using a default sleeptime) */
 double mhz(int verbose);
@@ -17,6 +18,6 @@ double mhz_full(int verbose, int sleeptime);
 
 /** Special counters that compensate for timer interrupt overhead */
 
-void start_comp_counter();
+void start_comp_counter(void);
 
-double get_comp_counter();
+double get_comp_counter(void);
