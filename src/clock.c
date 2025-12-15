@@ -145,12 +145,11 @@ double get_counter(void) {
 /*******************************
  * Machine-independent functions
  ******************************/
-double ovhd(void) {
+double overhead(void) {
   /* Do it twice to eliminate cache effects */
-  int i;
-  double result;
+  double result = 0;
 
-  for (i = 0; i < 2; i++) {
+  for (int i = 0; i < 2; i++) {
     start_counter();
     result = get_counter();
   }
@@ -160,12 +159,11 @@ double ovhd(void) {
 /* $begin mhz */
 /* Estimate the clock rate by measuring the cycles that elapse */
 /* while sleeping for sleeptime seconds */
-double mhz_full(int verbose, int sleeptime) {
-  double rate;
+double mhz_full(const int verbose, const int sleeptime) {
 
   start_counter();
   sleep(sleeptime);
-  rate = get_counter() / (1e6 * sleeptime);
+  const double rate = get_counter() / (1e6 * sleeptime);
   if (verbose)
     printf("Processor clock rate ~= %.1f MHz\n", rate);
   return rate;
@@ -173,7 +171,7 @@ double mhz_full(int verbose, int sleeptime) {
 /* $end mhz */
 
 /* Version using a default sleeptime */
-double mhz(int verbose) { return mhz_full(verbose, 2); }
+double mhz(const int verbose) { return mhz_full(verbose, 2); }
 
 /** Special counters that compensate for timer interrupt overhead */
 
@@ -184,25 +182,22 @@ static double cyc_per_tick = 0.0;
 #define RECORDTHRESH 3000
 
 /* Attempt to see how much time is used by timer interrupt */
-static void callibrate(int verbose) {
-  double oldt;
+static void callibrate(void) {
   struct tms t;
-  clock_t oldc;
   int e = 0;
 
   times(&t);
-  oldc = t.tms_utime;
+  clock_t oldc = t.tms_utime;
   start_counter();
-  oldt = get_counter();
+  double oldt = get_counter();
   while (e < NEVENT) {
-    double newt = get_counter();
+    const double newt = get_counter();
 
     if (newt - oldt >= THRESHOLD) {
-      clock_t newc;
       times(&t);
-      newc = t.tms_utime;
+      const clock_t newc = t.tms_utime;
       if (newc > oldc) {
-        double cpt = (newt - oldt) / (newc - oldc);
+        const double cpt = (newt - oldt) / (double)(newc - oldc);
         if ((cyc_per_tick == 0.0 || cyc_per_tick > cpt) && cpt > RECORDTHRESH)
           cyc_per_tick = cpt;
         /*
@@ -216,8 +211,6 @@ static void callibrate(int verbose) {
       oldt = newt;
     }
   }
-  if (verbose)
-    printf("Setting cyc_per_tick to %f\n", cyc_per_tick);
 }
 
 static clock_t start_tick = 0;
@@ -226,21 +219,19 @@ void start_comp_counter(void) {
   struct tms t;
 
   if (cyc_per_tick == 0.0)
-    callibrate(0);
+    callibrate();
   times(&t);
   start_tick = t.tms_utime;
   start_counter();
 }
 
 double get_comp_counter(void) {
-  double time = get_counter();
-  double ctime;
+  const double time = get_counter();
   struct tms t;
-  clock_t ticks;
 
   times(&t);
-  ticks = t.tms_utime - start_tick;
-  ctime = time - ticks * cyc_per_tick;
+  const clock_t ticks = t.tms_utime - start_tick;
+  const double ctime = time - (double)ticks * cyc_per_tick;
   /*
     printf("Measured %.0f cycles.  Ticks = %d.  Corrected %.0f cycles\n",
     time, (int) ticks, ctime);

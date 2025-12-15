@@ -1,5 +1,4 @@
 #pragma once
-#include <unistd.h>
 
 void mem_init(void);
 void mem_deinit(void);

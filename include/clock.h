@@ -8,7 +8,7 @@ void start_counter(void);
 double get_counter(void);
 
 /* Measure overhead for counter */
-double ovhd(void);
+double overhead(void);
 
 /* Determine clock rate of processor (using a default sleeptime) */
 double mhz(int verbose);
