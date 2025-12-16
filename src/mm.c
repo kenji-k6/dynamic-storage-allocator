@@ -2,12 +2,8 @@
  * I use the Segregated-free-list approach, with coalescing after every call to
  * free.
  */
-#include <assert.h>
-#include <math.h>
 #include <stdbool.h>
-#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -71,7 +67,7 @@ static void *extend_heap(size_t words);
 static void *coalesce(void *bp);
 static void place(void *bp, size_t asize);
 
-static unsigned int getList(size_t size);
+static unsigned int get_list(size_t size);
 static void seg_list_add(void *bp);
 static void seg_list_delete(void *bp);
 static void *find_fit_seg(size_t asize);
@@ -121,7 +117,7 @@ int mm_init(void) {
  * mm_malloc - Allocate a block by incrementing the brk pointer.
  *     Always allocate a block whose size is a multiple of the alignment.
  */
-void *mm_malloc(size_t size) {
+void *mm_malloc(const size_t size) {
   // adjusted block size
   char *bp;
 
@@ -153,62 +149,56 @@ void *mm_malloc(size_t size) {
  */
 void mm_free(void *bp) {
   const size_t size = GET_SIZE(HDRP(bp)); // get size of block
-  PUT(HDRP(bp), PACK(size, 0));     // set header to free
-  PUT(FTRP(bp), PACK(size, 0));     // set footer to free
-  coalesce(bp);                     // coalesce if possible
+  PUT(HDRP(bp), PACK(size, 0));           // set header to free
+  PUT(FTRP(bp), PACK(size, 0));           // set footer to free
+  coalesce(bp);                           // coalesce if possible
 }
 
 /*
  * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
  */
-void *mm_realloc(void *ptr, size_t size) {
-  bool next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(ptr))); // is next block allocated?
-  const size_t nextSize = GET_SIZE(HDRP(NEXT_BLKP(ptr)));  // size of next block
-  const size_t oldSize = GET_SIZE(HDRP(ptr));
-  const size_t newSize = ALIGN(size) + (2 * WSIZE); // size of new block
-  const size_t combineSize = oldSize + nextSize;    // size of combined block
+void *mm_realloc(void *ptr, const size_t size) {
+  const bool next_alloc =
+      GET_ALLOC(HDRP(NEXT_BLKP(ptr))); // is next block allocated?
+  const size_t next_size = GET_SIZE(HDRP(NEXT_BLKP(ptr))); // size of next block
+  const size_t old_size = GET_SIZE(HDRP(ptr));
+  const size_t new_size = ALIGN(size) + (2 * WSIZE); // size of new block
+  const size_t combine_size = old_size + next_size;  // size of combined block
 
   if (size == 0) {
     mm_free(ptr);
     return NULL;
   }
 
-  if (ptr == NULL) {
-    return mm_malloc(size);
-  }
-
-  if (newSize <= oldSize) {
+  if (new_size <= old_size) {
     return ptr;
-  } else {
-
-    if (!next_alloc && (combineSize >= newSize)) {
-      seg_list_delete(NEXT_BLKP(ptr));
-      PUT(HDRP(ptr), PACK(combineSize, 1));
-      PUT(FTRP(ptr), PACK(combineSize, 1));
-      return ptr;
-    } else {
-      char *newPtr = mm_malloc(size);
-      if (newPtr == NULL) { // check if malloc failed
-        return NULL;
-      }
-      memcpy(newPtr, ptr, oldSize - DSIZE);
-      mm_free(ptr);
-      return newPtr;
-    }
   }
+  if (!next_alloc && (combine_size >= new_size)) {
+    seg_list_delete(NEXT_BLKP(ptr));
+    PUT(HDRP(ptr), PACK(combine_size, 1));
+    PUT(FTRP(ptr), PACK(combine_size, 1));
+    return ptr;
+  }
+  char *new_ptr = mm_malloc(size);
+  if (new_ptr == NULL) { // check if malloc failed
+    return NULL;
+  }
+  memcpy(new_ptr, ptr, old_size - DSIZE);
+  mm_free(ptr);
+  return new_ptr;
 }
 
 // private helper functions
 
 static void *extend_heap(
-    size_t words) // extends the heap by 4*words bytes, returns address of first
-                  // new free block, or NULL if extend_heap failed
+    const size_t words) // extends the heap by 4*words bytes, returns address of
+                        // first new free block, or NULL if extend_heap failed
 {
   char *bp;
 
-  const size_t size = (words % 2)
-                    ? (words + 1) * WSIZE
-                    : words * WSIZE; // make sure size is a multiple of 8 bytes
+  const size_t size =
+      (words % 2) ? (words + 1) * WSIZE
+                  : words * WSIZE; // make sure size is a multiple of 8 bytes
 
   if ((bp = mem_sbrk(size)) == (char *)-1) {
     return NULL; // mem_sbrk failed
@@ -224,15 +214,18 @@ static void *extend_heap(
 
 // checks if coalescing is possible and returns pointer to coalesced block
 static void *coalesce(void *bp) {
-  bool prev_alloc =
+  const bool prev_alloc =
       GET_ALLOC(FTRP(PREV_BLKP(bp))); // is previous block allocated?
-  bool next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(bp))); // is next block allocated?
-  size_t size = GET_SIZE(HDRP(bp));                 // size of current block
+  const bool next_alloc =
+      GET_ALLOC(HDRP(NEXT_BLKP(bp))); // is next block allocated?
+  size_t size = GET_SIZE(HDRP(bp));   // size of current block
 
   if (prev_alloc && next_alloc) {
     seg_list_add(bp); // add block to free list
     return bp;
-  } else if (prev_alloc && !next_alloc) {
+  }
+
+  if (prev_alloc) {
     size += GET_SIZE(
         HDRP(NEXT_BLKP(bp)));       // add size of next block to current block
     seg_list_delete(NEXT_BLKP(bp)); // remove next block from free list
@@ -240,7 +233,9 @@ static void *coalesce(void *bp) {
     PUT(FTRP(bp), PACK(size, 0));
     seg_list_add(bp);
     return bp;
-  } else if (!prev_alloc && next_alloc) {
+  }
+
+  if (next_alloc) {
     size += GET_SIZE(FTRP(PREV_BLKP(bp)));
     seg_list_delete(PREV_BLKP(bp));
     PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
@@ -260,7 +255,7 @@ static void *coalesce(void *bp) {
   }
 }
 
-static void place(void *bp, size_t asize) {
+static void place(void *bp, const size_t asize) {
   const size_t csize = GET_SIZE(HDRP(bp));
 
   if (csize - asize >= (4 * WSIZE)) { // splitting possible
@@ -313,7 +308,7 @@ static void free_list_delete(void *bp)
 
 // Methods for segregated lists:
 
-static unsigned int getList(size_t size) {
+static unsigned int get_list(const size_t size) {
 
   if (size <= (8 * WSIZE)) {
     return 0;
@@ -355,7 +350,7 @@ static unsigned int getList(size_t size) {
 }
 
 static void seg_list_add(void *bp) {
-  const unsigned int list = getList(GET_SIZE(HDRP(bp)));
+  const unsigned int list = get_list(GET_SIZE(HDRP(bp)));
   NEXT_FREE(bp) = SEGS(list);
   PREV_FREE(SEGS(list)) = bp;
   PREV_FREE(bp) = NULL;
@@ -363,7 +358,7 @@ static void seg_list_add(void *bp) {
 }
 
 static void seg_list_delete(void *bp) {
-  const unsigned int list = getList(GET_SIZE(HDRP(bp)));
+  const unsigned int list = get_list(GET_SIZE(HDRP(bp)));
 
   if (PREV_FREE(bp) == NULL) {
     SEGS(list) = NEXT_FREE(bp);
@@ -374,9 +369,9 @@ static void seg_list_delete(void *bp) {
   PREV_FREE(NEXT_FREE(bp)) = PREV_FREE(bp);
 }
 
-static void *find_fit_seg(size_t asize) {
+static void *find_fit_seg(const size_t asize) {
 
-  for (int i = getList(asize); i < NUMSEGS; i++) {
+  for (int i = get_list(asize); i < NUMSEGS; i++) {
     for (char *bp = SEGS(i); GET_ALLOC(HDRP(bp)) == 0; bp = NEXT_FREE(bp)) {
       if (GET_SIZE(HDRP(bp)) >= asize && !GET_ALLOC(HDRP(bp))) {
         return bp;
